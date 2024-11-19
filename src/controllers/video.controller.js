@@ -1,3 +1,4 @@
+import { isValidObjectId } from "mongoose";
 import { Video } from "../models/video.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -71,7 +72,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
     throw new ApiError(406, "thumbnail and video are required");
   }
 
-  const { mimetype: thumbnailMimeType, size: thumbnailSize } =thumbnailFile[0];
+  const { mimetype: thumbnailMimeType, size: thumbnailSize } = thumbnailFile[0];
   if (!allowedImageMimeTypes.includes(thumbnailMimeType)) {
     throw new ApiError(406, "thumbnail should be image");
   }
@@ -93,43 +94,59 @@ const publishAVideo = asyncHandler(async (req, res) => {
     throw new ApiError(406, "video size should be between 20KB and 100MB");
   }
 
-  const thumbnailResponse= await uploadOnCloudinary(thumbnailFilePath)
+  const thumbnailResponse = await uploadOnCloudinary(thumbnailFilePath);
   if (!thumbnailResponse?.url || !thumbnailResponse?.public_id) {
     throw new ApiError(500, "thumbnail is not uplaoded on cloudinary");
   }
 
-  const videoResponse=await uploadOnCloudinary(videoFilePath)
+  const videoResponse = await uploadOnCloudinary(videoFilePath);
   if (!videoResponse?.url || !videoResponse?.public_id) {
     throw new ApiError(500, "Video is not uplaoded on cloudinary");
   }
 
-  const user=req?.user._id
+  const user = req?.user._id;
 
-  const videoAddedToDB=await Video.create({
+  const videoAddedToDB = await Video.create({
     videoFile: {
       url: videoResponse.url,
       publicId: videoResponse.public_id,
     },
     thumbnail: {
       url: thumbnailResponse.url,
-      publicId: thumbnailResponse.public_id
+      publicId: thumbnailResponse.public_id,
     },
     title,
     description,
     owner: user,
     duration: videoResponse.duration,
     isPublished: true,
-  })
+  });
 
   if (!videoAddedToDB) {
-    throw new ApiError(500,"video is not added to DB")
+    throw new ApiError(500, "video is not added to DB");
   }
 
   return res
-  .status(200)
-  .json(
-    new ApiResponse(200,videoAddedToDB,"video is published successfully")
-  )
+    .status(200)
+    .json(
+      new ApiResponse(200, videoAddedToDB, "video is published successfully")
+    );
 });
 
-export { publishAVideo };
+const getVideoById = asyncHandler(async (req, res) => {
+  const { videoId } = req.params;
+  if (!isValidObjectId(videoId)) throw new ApiError(400, "Invalid video ID");
+  //TODO: get video by id
+
+  const video = await Video.findById(videoId);
+  if (!video) throw new ApiError(404, "Video not found");
+  return res
+    .status(200)
+    .json(new ApiResponse(200, video, "Video found successfully"));
+});
+
+
+export {
+  publishAVideo, 
+  getVideoById 
+};
