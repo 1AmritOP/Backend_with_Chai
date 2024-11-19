@@ -75,7 +75,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
   if (!allowedImageMimeTypes.includes(thumbnailMimeType)) {
     throw new ApiError(406, "thumbnail should be image");
   }
-  
+
   if (
     thumbnailSize < MIN_IMAGE_FILE_SIZE ||
     thumbnailSize > MAX_IMAGE_FILE_SIZE
