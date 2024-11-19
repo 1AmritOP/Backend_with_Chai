@@ -48,11 +48,11 @@ const videoSchema= new Schema(
             ref: "User"
         },
         //to track unqiue viewes
-        // viewers:{
-        //     type:[Schema.Types.ObjectId],
-        //     ref:"User",
-        //     default:[]
-        //   },
+        viewers:{
+            type:[Schema.Types.ObjectId],
+            ref:"User",
+            default:[]
+          },
     },
     {
         timestamps: true
