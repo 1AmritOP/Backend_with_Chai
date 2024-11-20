@@ -45,7 +45,14 @@ const userSchema= new Schema(
                 type: Schema.Types.ObjectId,
                 ref: "Video"
             }
-        ]
+        ],
+
+        // watchHistory: [
+        //     {
+        //       videoId: { type: Schema.Types.ObjectId, ref: "Video" },
+        //       lastWatchedAt: { type: Date, default: Date.now }, 
+        //     },
+        //   ],
     },
     {timestamps: true}
 )
