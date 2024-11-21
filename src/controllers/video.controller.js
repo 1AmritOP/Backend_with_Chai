@@ -4,7 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import { deleteFileFromCloudinary, deleteVideoFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { User } from "../models/user.model.js";
 
 const MIN_IMAGE_FILE_SIZE = 20 * 1024; // 20 KB
@@ -396,4 +396,54 @@ const getVideoById = asyncHandler(async (req, res) => {
   //es code ko last me dalna hai
 });
 
-export { publishAVideo, getVideoById };
+const deleteVideo=asyncHandler(async(req,res)=>{
+  //get video id by params
+  //then check validation
+  //insure that only owner can delete the video
+  //then delete video,thumbnail from cloudinary
+  // delete video  from DB
+  //and send response
+
+  const {videoId}=req.params
+
+  if (!videoId || !isValidObjectId(videoId)) {
+    throw new ApiError(404,"videoId is not valid")
+  }
+  const video=await Video.findById(videoId)
+  if (!video) {
+    throw new ApiError(404,"video not found")
+  }
+
+  if (!video.owner.equals(req.user?._id)) {
+    throw new ApiError(403, 'You are not authorized to delete this video')
+  }
+
+  // const videoPublicId=video.videoFile.publicId
+  // const thumbnailPublicId=video.thumbnail.publicId
+
+  const videoResponse=deleteVideoFromCloudinary(video.videoFile.publicId)
+
+  if (!videoResponse) {
+    throw new ApiError(500,"video is not deleted")
+  }
+
+  const thumbnailResponse=deleteFileFromCloudinary(video.thumbnail.publicId)
+
+  if (!thumbnailResponse) {
+    throw new ApiError(500,"thumbnail is not deleted")
+  }
+
+
+  const delVideo=await Video.findByIdAndDelete(videoId)
+
+  if (!delVideo) {
+    throw new ApiError(500,"video is not deleted from DB")
+  }
+  
+  return res
+  .status(200)
+  .json(new ApiResponse(200,{},"video deleted from DB and cloud"))
+})
+
+
+export { publishAVideo, getVideoById ,deleteVideo };

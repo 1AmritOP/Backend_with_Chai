@@ -45,5 +45,22 @@ const deleteFileFromCloudinary = async (publicId) => {
     }
   };
 
+  const deleteVideoFromCloudinary = async (publicId) => {
+    try {
+      if (!publicId) {
+        throw new ApiError(400, "No public id provided");
+      }
+      const response = await cloudinary.uploader.destroy(publicId,  { resource_type: 'video' });
+      console.log("Video is Deleted from Cloudinary -> ", response);
+      if (response.result == "ok") {
+        return true;
+      } else {
+        return false; 
+      }
+    } catch (error) {
+      console.error("Cloudinary delete error:", error);
+      throw new ApiError(500, "Failed to delete Video from Cloudinary");
+    }
+  };
 
-export {uploadOnCloudinary,deleteFileFromCloudinary}
+export {uploadOnCloudinary,deleteFileFromCloudinary,deleteVideoFromCloudinary}
