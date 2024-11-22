@@ -445,5 +445,89 @@ const deleteVideo=asyncHandler(async(req,res)=>{
   .json(new ApiResponse(200,{},"video deleted from DB and cloud"))
 })
 
+const togglePublishStatus=asyncHandler(async(req,res)=>{
+  //get videoId 
+  //validate videoId
+  //ensure owner is making change
+  //update the video
+  const {videoId}=req.params;
 
-export { publishAVideo, getVideoById ,deleteVideo };
+  if (!videoId || !isValidObjectId(videoId)) {
+    throw new ApiError(400,"videoId is not valid")
+  }
+
+  const video=await Video.findById(videoId)
+
+  if (!video) {
+    throw new ApiError(404,"video not found")
+  }
+
+  if (!video.owner.equals(req.user?._id)) {
+    throw new ApiError(403, 'You are not authorized to update info')
+  }
+  
+  const updateVideo=await Video.findByIdAndUpdate(
+    videoId,
+    {isPublished: !video.isPublished },
+    {new: true}
+  )
+
+  if (!updateVideo) {
+    throw new ApiError(500,"Error while updating video")
+  }
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(200,updateVideo,"Video is updated...")
+  )
+})
+
+const updateVideo = asyncHandler(async (req, res) => {
+  //TODO: update video details --> title,description
+  //validate videoId
+  //get title and description
+  //ensure owner is making change
+  //update the video
+  const { videoId } = req.params
+  if (!isValidObjectId(videoId)) {
+    throw new ApiError(400,"Video Id is not valid")
+  }
+  const {title ,description} =req.body
+
+  if (!title?.trim() || !description?.trim()) {
+    throw new ApiError(400,"title and desciption is required")
+  }
+  const video=await Video.findById(videoId)
+
+  if (!video) {
+    throw new ApiError(404,"video not found")
+  }
+
+  if (!video.owner.equals(req.user?._id)) {
+    throw new ApiError(403, 'You are not authorized to update info')
+  }
+
+  const videoUpdateRes=await Video.findByIdAndUpdate(
+    videoId,
+    {
+      $set:{
+        title,
+        description
+      }
+    },
+    {new: true}
+  ).select("title description")
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200, { videoUpdateRes }, "Accound Updated successfully"));
+})
+
+export { 
+  publishAVideo,
+  getVideoById,
+  deleteVideo ,
+  togglePublishStatus ,
+  updateVideo,
+};
