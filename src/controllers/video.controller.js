@@ -182,30 +182,98 @@ const getVideoById = asyncHandler(async (req, res) => {
       },
       
     },
-    {
-      $addFields:{
-        channelOwner: {
-          $first: "$channelOwner"
-        }
-      }
-    },
+    { $unwind: "$channelOwner" },
+    // {
+    //   $addFields:{
+    //     channelOwner: {
+    //       $first: "$channelOwner"
+    //     }
+    //   }
+    // },
     {
       $lookup:{
         from:"subscriptions",
         localField:"owner",
         foreignField:"channel",
         as:"subs",
-        // pipeline: [{ $project: { subscriber: 1 ,channel: 1} }],
+        pipeline: [{ $project: { subscriber: 1 } }],
       }
     },
     {
       $addFields:{
         isSubscribed: { $in: [userId, "$subs.subscriber"] },
-        // isSubscribed: {$in: [userId, ]},
         subscriberCount:{ $size: "$subs" },
       }
-    }
-
+    },
+    {
+      $lookup:{
+        from:"comments",
+        localField:"_id",
+        foreignField:"video",
+        pipeline: [
+          {$sort: {updatedAt: -1}},
+          {$limit: 10},
+          {
+            $lookup:{
+              from:"users",
+              localField:"owner",
+              foreignField:"_id",
+              pipeline: [
+                  {
+                    $project:{
+                      username: 1,
+                      avatar: 1 //"$avatar.url" i have to update user model and user controller
+                    }
+                  }
+              ],
+              as:"commentedBy"
+            },
+          },
+          { $unwind: "$commentedBy" }, // batter than first ,.. check documentation
+          {
+            $lookup: {
+              from:"likes",
+              localField:"_id",
+              foreignField:"commentId",
+              pipeline: [{$project: {likeById: 1}}],
+              as:"likesOnComment"
+            }
+          },
+          {
+            $addFields: {
+              likeCount: {$size: "$likesOnComment"},
+              isLikedByUser: {$in : [userId , "$likesOnComment.likeById"]}
+            }
+          },
+          {
+            $project: {
+              _id: 1,
+              content: 1,
+              commentBy: "$commentedBy.userName",
+              commentByAvatar: "$commentedBy.avatar",
+              likeCount: 1,
+              isLikedByUser: 1,
+            },
+          }
+        ],
+        as:"comments"
+      }
+    },
+    {
+      $lookup: {
+        from:"likes",
+        localField:"_id",
+        foreignField:"videoId",
+        as:"likes"
+      }
+    },
+    {
+      $addFields: {
+        likesCount: {$size: "$likes.likeById"},
+        likedByUser:{ $in: [userId, "$likes.likeById"]}
+      }
+    },
+    { $unset: ["likes", "subs"] },
   ]);
 
   // const video = await Video.aggregate([
@@ -250,7 +318,7 @@ const getVideoById = asyncHandler(async (req, res) => {
   //     },
   //   },
   //   // Fetch video comments
-  //   {
+  //   {    
   //     $lookup: {
   //       from: "comments",
   //       localField: "_id",
@@ -384,16 +452,6 @@ const getVideoById = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, video[0], "Video Retrieved Successfully"));
-
-  // // Usage in Controller
-  // try {
-  //   const videoDetails = await fetchVideoDetails(videoId, userId);
-  //   return res.status(200).json(videoDetails);
-  // } catch (error) {
-  //   return res.status(error.statusCode || 500).json({ error: error.message });
-  // }
-
-  //es code ko last me dalna hai
 });
 
 const deleteVideo=asyncHandler(async(req,res)=>{
@@ -524,10 +582,24 @@ const updateVideo = asyncHandler(async (req, res) => {
   .json(new ApiResponse(200, { videoUpdateRes }, "Accound Updated successfully"));
 })
 
+const getDefaultVideos = asyncHandler(async(req,res)=>{
+  // try {
+    const videos = await Video.aggregate([{ $sample: { size: 10 } }]); // Random 10 videos
+    if (!videos) {
+      throw new ApiError(500,"videos not found")
+    }
+    res.status(200).json(new ApiResponse(200,{videos},"videos Fetched .."));
+// } catch (err) {
+//     res.status(500).json( new ApiResponse() { error: "Failed to fetch default videos" });
+// }
+})
+
+
 export { 
   publishAVideo,
   getVideoById,
   deleteVideo ,
   togglePublishStatus ,
   updateVideo,
+  getDefaultVideos
 };
