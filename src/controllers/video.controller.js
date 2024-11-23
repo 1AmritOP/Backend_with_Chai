@@ -1,4 +1,4 @@
-import mongoose, { isValidObjectId } from "mongoose";
+import  mongoose, { isValidObjectId } from "mongoose";
 import { Video } from "../models/video.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -6,6 +6,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { deleteFileFromCloudinary, deleteVideoFromCloudinary, uploadOnCloudinary } from "../utils/cloudinary.js";
 import { User } from "../models/user.model.js";
+import { ViewLog } from "../models/viewLog.model.js";
+
 
 const MIN_IMAGE_FILE_SIZE = 20 * 1024; // 20 KB
 const MAX_IMAGE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -424,6 +426,7 @@ const getVideoById = asyncHandler(async (req, res) => {
   //   // { upsert: true }
   // );  //simple method to add video in watch history
 
+
   const updateWatchHistory = await User.updateOne({ _id: userId }, [
     {
       $set: {
@@ -447,6 +450,15 @@ const getVideoById = asyncHandler(async (req, res) => {
 
   if (!updateWatchHistory) {
     throw new ApiError(406, "not added in watchHistory");
+  }
+
+  const alreadyViewed= await ViewLog.findOne({videoId,userId })
+  if (!alreadyViewed) {
+    await ViewLog.create({videoId,userId})
+
+    await Video.findByIdAndUpdate(videoId,{
+      $inc: {views:1}
+    }, {new: true})
   }
 
   return res
