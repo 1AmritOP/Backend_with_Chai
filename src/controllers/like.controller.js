@@ -89,5 +89,6 @@ const toggleCommentLike=asyncHandler(async(req,res)=>{
 })
 
 export {
-    toggleVideoLike
+    toggleVideoLike,
+    toggleCommentLike
 }
