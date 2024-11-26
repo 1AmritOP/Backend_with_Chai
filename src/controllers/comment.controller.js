@@ -86,7 +86,67 @@ const addComment=asyncHandler(async(req,res)=>{
 
 })
 
+const updateComment=asyncHandler(async(req,res)=>{
+  //get commentId,content and validate
+  //ensure user can update the comment
+  //update the comment and save to DB
+  const {commentId} =req.params
+  const {content}=req.body
+
+
+  if (!commentId?.trim() || !isValidObjectId(commentId)) {
+    throw new ApiError(400,"comment id is require")
+  }
+
+  if (!content?.trim()) {
+    throw new ApiError(400,"content is required to update")
+  }
+
+  const comment=await Comment.findById(commentId)
+
+  if (!comment) {
+    throw new ApiError(404,"comment not found")
+  }
+  if (!(req?.user).equals(comment.owner)) {
+    throw new ApiError(403, 'You are not allowed to update this comment')
+  }
+
+  comment.content=content
+  await comment.save({ validateBeforeSave: false });
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200, { comment }, 'Comment updated successfully'))
+})
+
+const deleteComment=asyncHandler(async(req,res)=>{
+  //get commentId and validate
+  //ensure user can delete the comment
+  //delete the comment From DB
+  const {commentId} =req.params
+
+  if (!commentId?.trim() || !isValidObjectId(commentId)) {
+    throw new ApiError(400,"comment id is require")
+  }
+  const comment=await Comment.findById(commentId)
+
+  if (!comment) {
+    throw new ApiError(404,"comment not found")
+  }
+  if (!(req?.user).equals(comment.owner)) {
+    throw new ApiError(403, 'You are not allowed to update this comment')
+  }
+
+  await Comment.findByIdAndDelete(commentId)
+
+  return res
+  .status(200)
+  .json(new ApiResponse(200,{}, 'Comment deleted successfully'))
+})
+
 export{
     getVideoComment,
-    addComment
+    addComment,
+    updateComment,
+    deleteComment
 }
