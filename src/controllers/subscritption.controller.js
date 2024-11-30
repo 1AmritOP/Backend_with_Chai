@@ -40,7 +40,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 
 // controller to return subscriber list of a channel
 const getUserChannelSubscribers=asyncHandler(async(req,res)=>{
-   const channelId=req.params
+   const {channelId}=req.params
 
    if (!channelId?.trim() || !isValidObjectId(channelId)) {
     throw new ApiError(400,"Channel Id is required")
@@ -95,7 +95,65 @@ const getUserChannelSubscribers=asyncHandler(async(req,res)=>{
 
 })
 
+// controller to return channel list to which user has subscribed
+const getSubscribedChannels=asyncHandler(async(req,res)=>{
+  // const user=req?.user
+  //or
+  const { subscriberId } = req.params;
+
+  if (!subscriberId?.trim() || !isValidObjectId(subscriberId)) {
+    throw new ApiError(406, "subscriber id is required")
+  }
+  const channels=Subscription.aggregate([
+    {
+      $match: new mongoose.Types.ObjectId(subscriberId)
+    },
+    {
+      $lookup:{
+        from:"users",
+        localField:"channel",
+        foreignField:"_id",
+        as:"channels",
+        pipeline:[
+          {
+            $project:{
+              username:1,
+              avatar:1,
+              fullName:1
+            }
+          }
+        ]
+      }
+    },
+    {
+      $addFields: {
+          channel: '$channels',
+      },
+    },
+    {
+      $project: {
+          channels: 1,
+      },
+    },
+  ])
+
+  return res
+  .status(200)
+  .json(
+      new ApiResponse(
+          200,
+          { channels },
+          'Subscribed channels fetched successfully'
+      )
+  )
+})
+
+
+//ek aur kaam krna sirf apne channnel ke subs dekh sake and apne subcribered channel
+
+
 export{
   toggleSubscription,
-  getUserChannelSubscribers
+  getUserChannelSubscribers,
+  getSubscribedChannels
 }
